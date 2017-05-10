@@ -1,0 +1,62 @@
+---
+- include_vars: credentials.yml
+
+- name: Remove existing Command Line Tools installation
+  file:
+    path: '{{ clt_path }}'
+    state: absent
+  when: force_xcode_clt_install
+  become: yes
+  become_method: sudo
+
+- name: Check that the Command Line Tools path is present
+  stat:
+    path: '{{ clt_path }}'
+  register: clt
+
+- name: Is xcode clt path present?
+  command: xcode-select -p
+  register: compiler
+  ignore_errors: true
+  changed_when: false
+
+- name: Check the Command Line Tools package metadata
+  command: pkgutil --pkg-info=com.apple.pkg.CLTools_Executables
+  register: pkg_info
+  ignore_errors: true
+  changed_when: false
+
+- name: Prepare to install Command Line Tools
+  file:
+    path: /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+    state: touch
+  when: pkg_info.rc != 0 or compiler.rc != 0 or not clt.stat.exists
+
+- name: Download Xcode CLI tools for 10.12 and Xcode 8.3
+  get_url:
+    url: '{{ clt_download_url }}'
+    dest: "{{ clt_download_path }}/{{ clt_pkg_file }}"
+    checksum: "{{ clt_pkg_file_sha256_checksum }}"
+  when: pkg_info.rc != 0 or compiler.rc != 0 or not clt.stat.exists
+
+- name: Mount command line tools
+  command: hdiutil attach "{{ clt_download_path }}/{{ clt_pkg_file }}"
+  when: pkg_info.rc != 0 or compiler.rc != 0 or not clt.stat.exists
+
+- name: Install CLI tools
+  become: yes
+  become_method: sudo
+  command: installer -pkg "/Volumes/Command Line Developer Tools/{{ clt_pkg_file_installer }}" -target /
+  when: pkg_info.rc != 0 or compiler.rc != 0 or not clt.stat.exists
+  notify:
+    - Finish
+
+- name: Unmount CLI tools
+  command: hdiutil unmount "/Volumes/Command Line Developer Tools"
+  when: pkg_info.rc != 0 or compiler.rc != 0 or not clt.stat.exists
+
+- name: Remove downloaded file
+  file:
+    path: "{{ clt_download_path }}/{{ clt_pkg_file }}"
+    state: absent
+  when: pkg_info.rc != 0 or compiler.rc != 0 or not clt.stat.exists

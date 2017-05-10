@@ -1,0 +1,121 @@
+---
+- include_vars: credentials.yml
+
+- name: Remove existing Xcode
+  file:
+    path: '{{ xcode_app_path }}'
+    state: absent
+  when: force_xcode_install
+  become: yes
+  become_method: sudo
+
+- name: Check that Xcode is present
+  stat:
+    path: '{{ xcode_app_path }}'
+  register: xcode
+
+- name: Check if download package exists
+  stat:
+    path: '/tmp/{{ xcode_xip_name }}'
+    get_md5: false
+    get_checksum: false
+  register: xip_file
+  ignore_errors: true
+  changed_when: false
+
+- name: Check if downloaded and extracted app already exists
+  stat:
+    path: '/tmp/Xcode.app'
+    get_md5: false
+    get_checksum: false
+  register: xcode_extract_path_pre_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Prepare to install Xcode
+  file:
+    path: /tmp/.com.apple.dt.xcode.installondemand.in-progress
+    state: touch
+  when: not xcode.stat.exists
+
+- name: Download Xcode
+  get_url:
+    url: '{{ xcode_download_url }}'
+    dest: '/tmp/{{ xcode_xip_name }}'
+  when: (xip_file != 0 and not xcode.stat.exists) and not xcode_extract_path_pre_check.stat.exists
+
+- name: Unpack
+  command: '"/System/Library/CoreServices/Applications/Archive Utility.app/Contents/MacOS/Archive Utility" /tmp/{{ xcode_xip_name }}'
+  when: not xcode.stat.exists and not xcode_extract_path_pre_check.stat.exists
+
+- name: Check if extraction was successful
+  stat:
+    path: '/tmp/Xcode.app'
+    get_md5: false
+    get_checksum: false
+  register: xcode_extract_path
+  when: not xcode.stat.exists
+
+- name: Move Xcode to applications
+  become: yes
+  become_method: sudo
+  command: "mv /tmp/Xcode.app {{ xcode_install_path }}"
+  when: xcode_extract_path.stat.exists
+  when: not xcode.stat.exists and xcode_extract_path.stat.exists
+  notify:
+    - Finish
+
+- name: Remove downloaded file
+  file:
+    path: '/tmp/{{ xcode_xip_name }}'
+    state: absent
+  when: xip_file.stat.exists or not xcode.stat.exists
+
+- name: Accept Xcode license
+  command: /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -license accept
+  become: yes
+  become_method: sudo
+
+- name: Check if mobile device package is installed
+  shell: pkgutil --pkgs | grep -Fxq com.apple.pkg.MobileDevice
+  register: pkg_mobile_device_present
+  check_mode: no
+  ignore_errors: True
+  changed_when: False
+
+- name: Install mobile device package
+  command: /usr/sbin/installer -pkg /Applications/Xcode.app/Contents/Resources/Packages/MobileDevice.pkg -target /
+  become: yes
+  become_method: sudo
+  when: not pkg_mobile_device_present or force_xcode_install or pkg_mobile_device_present|failed
+
+- name: Check if mobile device development package is installed
+  shell: pkgutil --pkgs | grep -Fxq com.apple.pkg.MobileDeviceDevelopment
+  register: pkg_mobile_device_development_present
+  check_mode: no
+  ignore_errors: True
+  changed_when: False
+
+- name: install mobile device development package
+  command: /usr/sbin/installer -pkg /Applications/Xcode.app/Contents/Resources/Packages/MobileDeviceDevelopment.pkg -target /
+  become: yes
+  become_method: sudo
+  when: not pkg_mobile_device_development_present or force_xcode_install or pkg_mobile_device_development_present|failed
+
+- name: Check if Xcode System Resources package is installed
+  shell: pkgutil --pkgs | grep -Fxq com.apple.pkg.XcodeSystemResources
+  register: pkg_xcode_system_resources_present
+  check_mode: no
+  ignore_errors: True
+  changed_when: False
+
+- name: install Xcode System Resources package
+  command: /usr/sbin/installer -pkg /Applications/Xcode.app/Contents/Resources/Packages/XcodeSystemResources.pkg -target /
+  become: yes
+  become_method: sudo
+  when: not pkg_xcode_system_resources_present or force_xcode_install or pkg_xcode_system_resources_present|failed
+
+- name: ensure xcode-select is pointing at xcode
+  command: xcode-select -s /Applications/Xcode.app/Contents/Developer
+  become: yes
+  become_method: sudo

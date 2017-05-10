@@ -1,0 +1,3 @@
+---
+# force install of command line tools
+force_xcode_clt_install: no

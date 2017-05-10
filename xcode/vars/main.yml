@@ -1,0 +1,6 @@
+---
+# command line tools path
+xcode_install_path: /Applications
+xcode_app_path: "{{ xcode_install_path }}/Xcode.app"
+xcode_xip_name: Xcode8.3.2.xip
+xcode_download_url: "http://www.stefanpopp.de/xcode/{{ xcode_xip_name }}"

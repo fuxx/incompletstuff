@@ -1,0 +1,8 @@
+---
+# command line tools path
+clt_path: /Library/Developer/CommandLineTools
+clt_download_path: /tmp
+clt_download_url: http://www.stefanpopp.de/xcode/Command_Line_Tools_macOS_10.12_for_Xcode_8.3.dmg
+clt_pkg_file: Command_Line_Tools_macOS_10.12_for_Xcode_8.3.dmg
+clt_pkg_file_sha256_checksum: sha256:7d73bbcddfc439338fe4db386db9638ad39e29ecbfcc503d52890d7d50ae5c40
+clt_pkg_file_installer: Command Line Tools (macOS Sierra version 10.12).pkg

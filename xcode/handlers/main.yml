@@ -1,0 +1,6 @@
+---
+
+- name: Finish
+  file:
+    path: /tmp/.com.apple.dt.xcode.installondemand.in-progress
+    state: absent

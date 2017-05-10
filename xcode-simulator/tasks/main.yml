@@ -1,0 +1,15 @@
+---
+- include_vars: credentials.yml
+
+- name: Copy Xcode Simulators Script
+  copy: src=install-simulator.sh dest=/tmp/install-simulator.sh
+
+- name: Install Xcode Simulators
+  command: bash -c "sh /tmp/install-simulator.sh {{ xcode_simulator_version }} {{ xcode_simulator_version_pkg_dmg_identifier }}"
+  become: yes
+  become_method: sudo
+
+- name: Delete copied Scripts
+  command: bash -c "rm -rf /tmp/install-simulator.sh"
+  become: yes
+  become_method: sudo
